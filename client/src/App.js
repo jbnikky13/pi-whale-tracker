@@ -56,8 +56,8 @@ function App() {
         memo: "Support Pi Whale Tracker",
         metadata: { type: "donation" }
       }, {
-        onReadyForServerApproval: (id) => console.log("Approve:", id),
-        onReadyForServerCompletion: (id, txid) => console.log("Complete:", id, txid),
+        onReadyForServerApproval: async (id) => { await axios.post(`${API}/api/payments/approve`, { paymentId: id }); },
+        onReadyForServerCompletion: async (id, txid) => { await axios.post(`${API}/api/payments/complete`, { paymentId: id, txid }); },
         onCancel: (id) => console.log("Cancelled:", id),
         onError: (err) => console.log("Error:", err)
       });
