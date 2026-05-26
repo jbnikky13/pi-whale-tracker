@@ -3,6 +3,10 @@ import axios from "axios";
 
 const API = "https://pi-whale-tracker-production.up.railway.app";
 
+if (window.Pi) {
+  window.Pi.init({ version: "2.0", sandbox: false });
+}
+
 function App() {
   const [whales, setWhales] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +46,23 @@ function App() {
     }
   };
 
+  const makeDonation = async () => {
+    if (!window.Pi) {
+      alert("Please open in Pi Browser");
+      return;
+    }
+    window.Pi.createPayment({
+      amount: 1,
+      memo: "Support Pi Whale Tracker",
+      metadata: { type: "donation" }
+    }, {
+      onReadyForServerApproval: (paymentId) => console.log("Approve:", paymentId),
+      onReadyForServerCompletion: (paymentId, txid) => console.log("Complete:", paymentId, txid),
+      onCancel: (paymentId) => console.log("Cancelled:", paymentId),
+      onError: (error) => console.log("Error:", error)
+    });
+  };
+
   const filteredWhales = whales.filter(w =>
     w.from.toLowerCase().includes(search.toLowerCase()) ||
     w.to.toLowerCase().includes(search.toLowerCase())
@@ -70,6 +91,7 @@ function App() {
     txHash: { fontSize: "10px", color: "#666", wordBreak: "break-all", marginTop: "8px" },
     walletBox: { backgroundColor: "#16213e", borderRadius: "12px", padding: "16px", marginBottom: "12px", border: "1px solid #4caf50" },
     walletTx: { fontSize: "12px", color: "#aaa", padding: "8px 0", borderBottom: "1px solid #ffffff11" },
+    donateBtn: { backgroundColor: "#9c27b0", border: "none", borderRadius: "8px", color: "white", padding: "8px 20px", marginTop: "8px", cursor: "pointer", fontSize: "13px" }
   };
 
   return (
@@ -77,12 +99,13 @@ function App() {
       <div style={s.header}>
         <h1 style={s.title}>🐋 Pi Whale Tracker</h1>
         <p style={s.subtitle}>Tracking large Pi Network transactions in real-time</p>
+        <button onClick={makeDonation} style={s.donateBtn}>⚡ Support with 1π</button>
       </div>
 
       <div style={s.searchRow}>
         <input
           style={s.input}
-          placeholder="Enter wallet address to lookup..."
+          placeholder="Enter full wallet address..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           onKeyPress={e => e.key === "Enter" && searchWallet()}
@@ -91,12 +114,11 @@ function App() {
         {search && <button style={{...s.btn, backgroundColor: "#333"}} onClick={() => { setSearch(""); setWalletData(null); }}>✕</button>}
       </div>
 
-      {/* Wallet Result */}
       {walletLoading && <p style={{ color: "#9c27b0", textAlign: "center" }}>Looking up wallet...</p>}
       {walletData && !walletData.error && (
         <div style={s.walletBox}>
           <p style={{ color: "#4caf50", fontWeight: "bold", margin: "0 0 10px" }}>✅ Wallet Transactions</p>
-          {walletData.slice(0, 10).map((tx, i) => (
+          {Array.isArray(walletData) && walletData.slice(0, 10).map((tx, i) => (
             <div key={i} style={s.walletTx}>
               <div>{tx.type === "payment" ? (tx.from === search ? "📤 Sent" : "📥 Received") : tx.type}</div>
               <div style={{ color: "#9c27b0" }}>{parseFloat(tx.amount || 0).toFixed(3)} π</div>
@@ -107,7 +129,6 @@ function App() {
       )}
       {walletData?.error && <p style={{ color: "#ff6b6b", textAlign: "center" }}>{walletData.error}</p>}
 
-      {/* Stats */}
       <div style={s.stats}>
         <div style={s.stat}>
           <div style={s.statVal}>{whales.length}</div>
@@ -123,7 +144,6 @@ function App() {
         </div>
       </div>
 
-      {/* Whale Feed */}
       <p style={{ color: "#aaa", fontSize: "12px", marginBottom: "10px" }}>Tap any transaction to see details</p>
       {loading ? (
         <p style={{ textAlign: "center", color: "#9c27b0" }}>Loading whales...</p>
@@ -143,7 +163,6 @@ function App() {
         ))
       )}
 
-      {/* Transaction Detail Modal */}
       {selected && (
         <div style={s.modal}>
           <div style={s.modalBox}>
