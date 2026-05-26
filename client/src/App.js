@@ -3,10 +3,6 @@ import axios from "axios";
 
 const API = "https://pi-whale-tracker-production.up.railway.app";
 
-if (window.Pi) {
-  window.Pi.init({ version: "2.0", sandbox: false });
-}
-
 function App() {
   const [whales, setWhales] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,6 +12,9 @@ function App() {
   const [selected, setSelected] = useState(null);
 
   useEffect(() => {
+    if (window.Pi) {
+      window.Pi.init({ version: "2.0", sandbox: false });
+    }
     fetchWhales();
     const interval = setInterval(fetchWhales, 30000);
     return () => clearInterval(interval);
@@ -46,20 +45,22 @@ function App() {
     }
   };
 
-  const makeDonation = async () => {
+  const makeDonation = () => {
     if (!window.Pi) {
       alert("Please open in Pi Browser");
       return;
     }
-    window.Pi.createPayment({
-      amount: 1,
-      memo: "Support Pi Whale Tracker",
-      metadata: { type: "donation" }
-    }, {
-      onReadyForServerApproval: (paymentId) => console.log("Approve:", paymentId),
-      onReadyForServerCompletion: (paymentId, txid) => console.log("Complete:", paymentId, txid),
-      onCancel: (paymentId) => console.log("Cancelled:", paymentId),
-      onError: (error) => console.log("Error:", error)
+    window.Pi.authenticate(["payments"], () => {}).then(() => {
+      window.Pi.createPayment({
+        amount: 1,
+        memo: "Support Pi Whale Tracker",
+        metadata: { type: "donation" }
+      }, {
+        onReadyForServerApproval: (id) => console.log("Approve:", id),
+        onReadyForServerCompletion: (id, txid) => console.log("Complete:", id, txid),
+        onCancel: (id) => console.log("Cancelled:", id),
+        onError: (err) => console.log("Error:", err)
+      });
     });
   };
 
@@ -73,6 +74,7 @@ function App() {
     header: { textAlign: "center", marginBottom: "20px" },
     title: { color: "#9c27b0", fontSize: "26px", margin: 0 },
     subtitle: { color: "#aaa", fontSize: "13px" },
+    donateBtn: { backgroundColor: "#9c27b0", border: "none", borderRadius: "8px", color: "white", padding: "8px 20px", marginTop: "8px", cursor: "pointer", fontSize: "13px" },
     searchRow: { display: "flex", gap: "8px", marginBottom: "16px" },
     input: { flex: 1, padding: "10px", backgroundColor: "#16213e", border: "1px solid #9c27b0", borderRadius: "8px", color: "white", fontSize: "13px" },
     btn: { padding: "10px 16px", backgroundColor: "#9c27b0", border: "none", borderRadius: "8px", color: "white", cursor: "pointer", fontSize: "13px" },
@@ -80,9 +82,9 @@ function App() {
     stat: { flex: 1, backgroundColor: "#16213e", padding: "12px", borderRadius: "10px", textAlign: "center", border: "1px solid #9c27b033" },
     statVal: { color: "#9c27b0", fontSize: "18px", fontWeight: "bold" },
     statLabel: { color: "#aaa", fontSize: "11px" },
-    card: (amount) => ({ backgroundColor: "#16213e", borderRadius: "12px", padding: "16px", marginBottom: "12px", border: `1px solid ${amount >= 10000 ? "#ff6b6b" : amount >= 3000 ? "#ffd93d" : "#9c27b0"}`, cursor: "pointer" }),
+    card: (a) => ({ backgroundColor: "#16213e", borderRadius: "12px", padding: "16px", marginBottom: "12px", border: `1px solid ${a >= 10000 ? "#ff6b6b" : a >= 3000 ? "#ffd93d" : "#9c27b0"}`, cursor: "pointer" }),
     cardTop: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-    amount: (amount) => ({ color: amount >= 10000 ? "#ff6b6b" : amount >= 3000 ? "#ffd93d" : "#9c27b0", fontSize: "20px", fontWeight: "bold" }),
+    amount: (a) => ({ color: a >= 10000 ? "#ff6b6b" : a >= 3000 ? "#ffd93d" : "#9c27b0", fontSize: "20px", fontWeight: "bold" }),
     addr: { fontSize: "11px", color: "#aaa", marginTop: "8px" },
     date: { fontSize: "11px", color: "#555", marginTop: "4px" },
     modal: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.8)", padding: "20px", overflowY: "auto", zIndex: 100 },
@@ -90,8 +92,7 @@ function App() {
     closeBtn: { float: "right", background: "none", border: "none", color: "#aaa", fontSize: "20px", cursor: "pointer" },
     txHash: { fontSize: "10px", color: "#666", wordBreak: "break-all", marginTop: "8px" },
     walletBox: { backgroundColor: "#16213e", borderRadius: "12px", padding: "16px", marginBottom: "12px", border: "1px solid #4caf50" },
-    walletTx: { fontSize: "12px", color: "#aaa", padding: "8px 0", borderBottom: "1px solid #ffffff11" },
-    donateBtn: { backgroundColor: "#9c27b0", border: "none", borderRadius: "8px", color: "white", padding: "8px 20px", marginTop: "8px", cursor: "pointer", fontSize: "13px" }
+    walletTx: { fontSize: "12px", color: "#aaa", padding: "8px 0", borderBottom: "1px solid #ffffff11" }
   };
 
   return (
@@ -130,18 +131,9 @@ function App() {
       {walletData?.error && <p style={{ color: "#ff6b6b", textAlign: "center" }}>{walletData.error}</p>}
 
       <div style={s.stats}>
-        <div style={s.stat}>
-          <div style={s.statVal}>{whales.length}</div>
-          <div style={s.statLabel}>Whales Found</div>
-        </div>
-        <div style={s.stat}>
-          <div style={s.statVal}>{whales.reduce((a, w) => a + w.amount, 0).toLocaleString()} π</div>
-          <div style={s.statLabel}>Total Pi Moved</div>
-        </div>
-        <div style={s.stat}>
-          <div style={s.statVal}>{new Date().toLocaleTimeString()}</div>
-          <div style={s.statLabel}>Last Updated</div>
-        </div>
+        <div style={s.stat}><div style={s.statVal}>{whales.length}</div><div style={s.statLabel}>Whales Found</div></div>
+        <div style={s.stat}><div style={s.statVal}>{whales.reduce((a, w) => a + w.amount, 0).toLocaleString()} π</div><div style={s.statLabel}>Total Pi Moved</div></div>
+        <div style={s.stat}><div style={s.statVal}>{new Date().toLocaleTimeString()}</div><div style={s.statLabel}>Last Updated</div></div>
       </div>
 
       <p style={{ color: "#aaa", fontSize: "12px", marginBottom: "10px" }}>Tap any transaction to see details</p>
