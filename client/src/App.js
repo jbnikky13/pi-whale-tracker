@@ -15,7 +15,7 @@ function App() {
 
   const fetchWhales = async () => {
     try {
-      const res = await axios.get("https://solid-enigma-7xw7wvqrjjjc6xx-5000.app.github.dev/api/whales");
+      const res = await axios.get("https://pi-whale-tracker-production.up.railway.app/api/whales");
       setWhales(res.data.whales);
     } catch (err) {
       console.error("Error fetching whales:", err);
